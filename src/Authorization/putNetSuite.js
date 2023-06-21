@@ -5,7 +5,7 @@ function putNetSuite(authorization, data, res){
   var options = {
     'method': 'PUT',
     'hostname': '5240409.restlets.api.netsuite.com',
-    'path': '/app/site/hosting/restlet.nl?script=2412&deploy=1',
+    'path': '/app/site/hosting/restlet.nl?script=2521&deploy=1',
     'headers': {
       'Authorization': authorization,
       'Content-Type': 'application/json',
@@ -24,13 +24,11 @@ function putNetSuite(authorization, data, res){
     response.on("end", function (chunk) {
       var body = Buffer.concat(chunks);
       console.log(body.toString());
-
       return res.status(200).send(body.toString());
     });
           
     response.on("error", function (error) {
       console.error(error);
-
       return error
     });
   });

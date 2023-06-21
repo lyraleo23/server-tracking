@@ -26,7 +26,7 @@ function getSignature(method, oauth_timestamp, oauth_nonce) {
 
   let baseURL = 'https://5240409.restlets.api.netsuite.com/app/site/hosting/restlet.nl';
 
-  let urlParams = `deploy=1&oauth_consumer_key=${oauth_consumer_key}&oauth_nonce=${oauth_nonce}&oauth_signature_method=${oauth_signature_method}&oauth_timestamp=${oauth_timestamp}&oauth_token=${oauth_token}&oauth_version=${oauth_version}&script=2412`;
+  let urlParams = `deploy=1&oauth_consumer_key=${oauth_consumer_key}&oauth_nonce=${oauth_nonce}&oauth_signature_method=${oauth_signature_method}&oauth_timestamp=${oauth_timestamp}&oauth_token=${oauth_token}&oauth_version=${oauth_version}&script=2521`;
 
   var baseString = method + '&' + encodeURIComponent(baseURL) + '&' + encodeURIComponent(urlParams);
 

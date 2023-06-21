@@ -5,4 +5,4 @@ const router = express.Router();
 
 router
   .post("/webhook/intelipost/notification", IntelipostController.receiveNotification)
-export default router;   
+export default router;
