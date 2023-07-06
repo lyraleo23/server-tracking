@@ -7,7 +7,7 @@ class IntelipostController {
     static receiveNotification = (req, res) => {
         console.log('Recebendo o POST da intelipost');
         let request = req.body
-        console.log(req.body)
+        // console.log(req.body)
         
         // req.body.checkout_cielo_order_number;
         let type = 'PUT';

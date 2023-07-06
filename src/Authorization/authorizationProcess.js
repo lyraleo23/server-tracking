@@ -2,11 +2,14 @@ import jsSHA from "jssha";
 import crypto from "crypto";
 
 function getAuthorization(method) {
-  const oauth_timestamp = Math.round(new Date().getTime() / 1000.0);
+  // const oauth_timestamp = Math.round(new Date().getTime() / 1000.0);
+  let oauth_timestamp = new Date().getTime();
 
-  const nonceObj = new jsSHA('SHA-1', 'TEXT', { encoding: 'UTF8' });
-  nonceObj.update(Math.round(new Date().getTime() / 1000.0));
-          
+  // const nonceObj = new jsSHA('SHA-1', 'TEXT', { encoding: 'UTF8' });
+  // nonceObj.update(Math.round(new Date().getTime() / 1000.0));
+  let nonceObj = new jsSHA('SHA-1', 'TEXT', { encoding: 'UTF8' });
+  nonceObj.update(new Date().getTime());
+  
   const oauth_nonce = nonceObj.getHash('HEX');
 
   let oauth_signature = getSignature(method, oauth_timestamp, oauth_nonce);
