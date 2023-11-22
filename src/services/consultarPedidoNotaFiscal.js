@@ -1,11 +1,11 @@
-const TOKEN = process.env.INTELIPOST_TOKEN;
+const INTELIPOST_TOKEN = process.env.INTELIPOST_TOKEN;
 
 function consultarPedidoNotaFiscal(numero_da_notafiscal) {
     const url = `https://api.intelipost.com.br/api/v1/shipment_order/invoice/${numero_da_notafiscal}`;
 
     let myHeaders = new Headers();
     myHeaders.append("Accept", "application/json");
-    myHeaders.append("api-key", TOKEN);
+    myHeaders.append("api-key", INTELIPOST_TOKEN);
 
     let requestOptions = {
         method: 'GET',

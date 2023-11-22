@@ -20,7 +20,7 @@ function getTemplate(messageObj) {
                     },
                     {
                         "type": "text",
-                        "text": "" //messageObj.expectedDeliveryDate
+                        "text": "-" //messageObj.expectedDeliveryDate
                     }
                 ]
             }
