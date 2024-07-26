@@ -2,13 +2,10 @@ function getTemplate(messageObj) {
     let templateObj;
 
     switch (messageObj.shipment_order_volume_state) {
-        // case 'SHIPPED':
-        //     templateName = 'pedido_enviado_imili';
-        //     break;
         case 'IN_TRANSIT':
             templateObj = {
                 phone: messageObj.phone,
-                templateName: 'pedido_enviado_imili',
+                templateName: '_pedido_enviado_v3',
                 templateParameters: [
                     {
                         "type": "text",
@@ -17,10 +14,6 @@ function getTemplate(messageObj) {
                     {
                         "type": "text",
                         "text": messageObj.trackingUrl
-                    },
-                    {
-                        "type": "text",
-                        "text": "-" //messageObj.expectedDeliveryDate
                     }
                 ]
             }

@@ -1,5 +1,6 @@
 import express from "express";
 import intelipost from "./intelipostRoutes.js";
+import ativmob from "./ativmobRoutes.js";
 import cors from "cors";
 
 const routes = (app) => {
@@ -13,7 +14,8 @@ const routes = (app) => {
     }),
     express.json(),
     express.urlencoded(),
-    intelipost
+    intelipost,
+    ativmob
   )
 }
 

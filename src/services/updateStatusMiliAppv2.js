@@ -1,5 +1,5 @@
-function updateStatusMiliApp(raw) {
-    const url = `https://api.fmiligrama.com/vendas/rastreamento`;
+function updateStatusMiliAppv2(raw) {
+    const url = `https://api.fmiligrama.com/vendas/rastreamento/v2`;
 
     let myHeaders = new Headers();
     myHeaders.append("Accept", "application/json");
@@ -16,4 +16,4 @@ function updateStatusMiliApp(raw) {
         .catch(error => console.log('error', error));
 }
 
-export default updateStatusMiliApp;
+export default updateStatusMiliAppv2;

@@ -9,23 +9,18 @@ class IntelipostController {
         console.log('----------------------------------------------');
         console.log('Recebendo o POST da intelipost');
         let request = req.body
-        // console.log(req.body)
+        // console.log(req.body);
 
         //  Main
         const sales_order_number = request.sales_order_number;
-        console.log(`sales_order_number: ${sales_order_number}`);
         const tracking_code = request.tracking_code;
-        console.log(`tracking_code: ${tracking_code}`);
         const tracking_url = request.tracking_url;
-        console.log(`tracking_url: ${tracking_url}`);
         const invoice_number = request.invoice.invoice_number;
-        console.log(`invoice_number: ${invoice_number}`);
+        const volume_number = request.volume_number;
 
         //  Macro Status
         const shipment_order_volume_state_localized = request.history.shipment_order_volume_state_localized;
-        console.log(`shipment_order_volume_state_localized: ${shipment_order_volume_state_localized}`);
         const shipment_order_volume_state = request.history.shipment_order_volume_state;
-        console.log(`shipment_order_volume_state: ${shipment_order_volume_state}`);
         const provider_message = request.history.provider_message;
 
         //  Micro status
@@ -36,36 +31,47 @@ class IntelipostController {
 
         if (request.estimated_delivery_date &&
         request.estimated_delivery_date.logistic_provider) {
-            console.log(request.estimated_delivery_date);
-
+            // console.log(request.estimated_delivery_date);
             if (request.estimated_delivery_date.logistic_provider.current_iso) {
-                console.log(`timestamp: ${request.estimated_delivery_date.logistic_provider.current}`);
-                console.log(request.estimated_delivery_date.logistic_provider.current_iso);
-                estimated_delivery_date = request.estimated_delivery_date.logistic_provider.current_iso;
+                // console.log(`timestamp: ${request.estimated_delivery_date.logistic_provider.current}`);
+                // console.log(request.estimated_delivery_date.logistic_provider.current_iso);
+                estimated_delivery_date = request.estimated_delivery_date.logistic_provider.current;
             }
             else if (request.estimated_delivery_date.logistic_provider.original_iso) {
-                console.log(`timestamp: ${request.estimated_delivery_date.logistic_provider.original}`);
-                console.log(request.estimated_delivery_date.logistic_provider.original_iso);
+                // console.log(`timestamp: ${request.estimated_delivery_date.logistic_provider.original}`);
+                // console.log(request.estimated_delivery_date.logistic_provider.original_iso);
             }
         }
-        console.log(`estimated_delivery_date: ${estimated_delivery_date}`);
-        console.log('----------------------------------------------');
 
-        if (shipment_order_volume_state === 'IN_TRANSIT' ||
-        shipment_order_volume_state === 'TO_BE_DELIVERED' ||
-        shipment_order_volume_state === 'DELIVERED') {
+        let pedidoIntelipostObj = await consultarPedidoNotaFiscal(invoice_number);
+        pedidoIntelipostObj = JSON.parse(pedidoIntelipostObj);
 
-            let pedidoIntelipostObj = await consultarPedidoNotaFiscal(invoice_number);
-                pedidoIntelipostObj = JSON.parse(pedidoIntelipostObj);
-
+        if (shipment_order_volume_state !== 'CREATED') {
             try {
-                await updateStatusMiliApp(invoice_number, tracking_code, tracking_url, shipment_order_volume_state_localized);
-                console.log(`Status atualizado no MiliApp`);
-                console.log('----------------------------------------------');
+                let raw = {
+                    numero_nota_fiscal: invoice_number,
+                    status_entrega: shipment_order_volume_state_localized,
+                    codigo_rastreamento: tracking_code,
+                    url_rastreamento: tracking_url,
+                    data_prevista: new Date(estimated_delivery_date),
+                    volume_number: volume_number,
+                    shipment_volume_micro_state: shipment_volume_micro_state,
+                    provider_message: provider_message
+                };
+    
+                await updateStatusMiliApp(raw);
             } catch (e) {
                 console.log(`Erro ao atualizar status no MiliApp: ${e.message}`);
-                console.log('----------------------------------------------');
             }
+        }
+
+        //  Envio de Status pelo WhatsApp
+        let sales_channel = pedidoIntelipostObj.content[0].sales_channel;
+
+        if ((shipment_order_volume_state === 'IN_TRANSIT' ||
+            shipment_order_volume_state === 'TO_BE_DELIVERED' ||
+            shipment_order_volume_state === 'DELIVERED') &&
+            (sales_channel === 'Miligrama Farmácia de Manipulação')) {
 
             try {
                 let phone;
@@ -81,11 +87,9 @@ class IntelipostController {
                         phone = pedidoIntelipostObj.content[0].end_customer.cellphone;
                     }
                     else {
-                        console.log('Sem telefone ou celular');
+                        // console.log('Sem telefone ou celular');
                     }
                 }
-                // let phone = pedidoIntelipostObj.content[0].end_customer.phone;
-                console.log(`phone: ${phone}`);
 
                 if (phone) {
                     phone = phone.replace(/[^a-zA-Z0-9]/g,"");
@@ -106,7 +110,7 @@ class IntelipostController {
                     if ((!startsWith('55', phone, 2)) && phone.length == 10) {
                         phone = '55' + phone.slice(0,2) + '9' + phone.slice(2);
                     }
-                    console.log(`phone: ${phone}`);
+                    // console.log(`phone: ${phone}`);
     
                     let messageObj = {
                         shipment_order_volume_state: shipment_order_volume_state,
@@ -119,15 +123,15 @@ class IntelipostController {
                     let templateObj = await getTemplate(messageObj);
                     let messageStatus = await sendTrackingStatus(templateObj);
 
-                    console.log(`messageStatus`);
-                    console.log(messageStatus);
-                    console.log('----------------------------------------------');
+                    // console.log(`messageStatus`);
+                    // console.log(messageStatus);
+                    // console.log('----------------------------------------------');
                 }
             } catch (e) {
                 console.log(`Erro ao enviar mensagem ao cliente: ${e.message}`);
-                console.log('----------------------------------------------');
             }
         }
+
         res.status(200).send('OK');
     }
 }
