@@ -2,6 +2,11 @@ import consultarPedidoNotaFiscal from '../services/consultarPedidoNotaFiscal.js'
 import sendTrackingStatus from '../services/sendTrackingStatus.js';
 import getTemplate from '../services/getTemplate.js';
 import updateStatusMiliApp from '../services/updateStatusMiliApp.js';
+import obterTokenTiny from '../services/MiliApp/obterTokenTiny.js';
+import pesquisarPedidoPorFiltro from '../services/MiliApp/pesquisarPedidoPorFiltro.js';
+import pesquisarPedidosV3 from '../services/Tiny_V3/pesquisarPedidosV3.js';
+import atualizarDespachoV3 from '../services/Tiny_V3/atualizarDespachoV3.js';
+import atualizarSituacaoPedidoV3 from '../services/Tiny_V3/atualizarSituacaoPedidoV3.js';
 
 class IntelipostController {
 
@@ -31,44 +36,126 @@ class IntelipostController {
 
         if (request.estimated_delivery_date &&
         request.estimated_delivery_date.logistic_provider) {
-            // console.log(request.estimated_delivery_date);
             if (request.estimated_delivery_date.logistic_provider.current_iso) {
-                // console.log(`timestamp: ${request.estimated_delivery_date.logistic_provider.current}`);
-                // console.log(request.estimated_delivery_date.logistic_provider.current_iso);
                 estimated_delivery_date = request.estimated_delivery_date.logistic_provider.current;
-            }
-            else if (request.estimated_delivery_date.logistic_provider.original_iso) {
-                // console.log(`timestamp: ${request.estimated_delivery_date.logistic_provider.original}`);
-                // console.log(request.estimated_delivery_date.logistic_provider.original_iso);
             }
         }
 
         let pedidoIntelipostObj = await consultarPedidoNotaFiscal(invoice_number);
         pedidoIntelipostObj = JSON.parse(pedidoIntelipostObj);
 
-        if (shipment_order_volume_state !== 'CREATED') {
+        try {
+            console.log('tentando atualização pela API V3');
+            let token_response = await obterTokenTiny();
+            token_response = JSON.parse(token_response);
+            let access_token = token_response[token_response.length - 1].access_token;
+            let url_params
+
             try {
-                let raw = {
-                    numero_nota_fiscal: invoice_number,
-                    status_entrega: shipment_order_volume_state_localized,
-                    codigo_rastreamento: tracking_code,
-                    url_rastreamento: tracking_url,
-                    data_prevista: new Date(estimated_delivery_date),
-                    volume_number: volume_number,
-                    shipment_volume_micro_state: shipment_volume_micro_state,
-                    provider_message: provider_message
-                };
+                url_params = `numero_ecommerce=${sales_order_number}`;
+                var response_pesquisa = await pesquisarPedidoPorFiltro(url_params);
+                response_pesquisa = JSON.parse(response_pesquisa);
+                var tiny_id = response_pesquisa.data[0].idPedidoTiny;
+            }
+            catch(e) {
+                console.error(`Erro ao pesquisar pelo numero_ecommerce: ${e.message}`);
+                try {
+                    url_params = `numero_nota_fiscal=${invoice_number}`;
+                    var response_pesquisa = await pesquisarPedidoPorFiltro(url_params);
+                    response_pesquisa = JSON.parse(response_pesquisa);
+                    var tiny_id = response_pesquisa.data[0].idPedidoTiny;
+                }
+                catch(e) {
+                    console.error(`Erro ao pesquisar pelo numero_nota_fiscal: ${e.message}`);
+                }
+            }
+            console.log(`tiny_id = ${tiny_id}`);
+
+            if (tiny_id) {
+                switch (shipment_order_volume_state) {
+                    case 'NEW':
+                        var situacao = 7;
+                        break;
+                    case 'CREATED':
+                        var situacao = 7;
+                        break;
+                    case 'SHIPPED':
+                        var situacao = 7;
+                        break;
+                    case 'IN_TRANSIT':
+                        var situacao = 5;
+                        break;
+                    case 'TO_BE_DELIVERED':
+                        var situacao = 5;
+                        break;
+                    case 'DELIVERED':
+                        var situacao = 6;
+                        break;
+                    default:
+                        break;
+                }
+                console.log(`Id: ${tiny_id} - ${shipment_order_volume_state} - situação: ${situacao}`);
     
-                await updateStatusMiliApp(raw);
-            } catch (e) {
-                console.log(`Erro ao atualizar status no MiliApp: ${e.message}`);
+                let despacho = {
+                    'codigoRastreamento': tracking_code,
+                    'urlRastreamento': tracking_url
+                }
+    
+                let response_despacho = await atualizarDespachoV3(access_token, tiny_id, despacho)
+                console.log(response_despacho);
+                if (situacao) {
+                    let response_situacao = await atualizarSituacaoPedidoV3(access_token, tiny_id, situacao)
+                    console.log(response_situacao);
+                }
+                console.log(`Id: ${tiny_id} - Atualizado pela API V3!`);
             }
         }
+        catch(e) {
+            console.error(`Erro ao atualizar pela API V3: ${e.message}`);
+
+            if (shipment_order_volume_state !== 'CREATED') {
+                try {
+                    let raw = {
+                        numero_nota_fiscal: invoice_number,
+                        status_entrega: shipment_order_volume_state_localized,
+                        codigo_rastreamento: tracking_code,
+                        url_rastreamento: tracking_url,
+                        data_prevista: new Date(estimated_delivery_date),
+                        volume_number: volume_number,
+                        shipment_volume_micro_state: shipment_volume_micro_state,
+                        provider_message: provider_message
+                    };
+                    await updateStatusMiliApp(raw);
+                    console.log(`numero_nota_fiscal: ${numero_nota_fiscal} - Atualizado pela API V2!`);
+                } catch (e) {
+                    console.log(`Erro ao atualizar status no MiliApp: ${e.message}`);
+                }
+            }
+        }
+
+        // if (shipment_order_volume_state !== 'CREATED') {
+        //     try {
+        //         let raw = {
+        //             numero_nota_fiscal: invoice_number,
+        //             status_entrega: shipment_order_volume_state_localized,
+        //             codigo_rastreamento: tracking_code,
+        //             url_rastreamento: tracking_url,
+        //             data_prevista: new Date(estimated_delivery_date),
+        //             volume_number: volume_number,
+        //             shipment_volume_micro_state: shipment_volume_micro_state,
+        //             provider_message: provider_message
+        //         };
+        //         await updateStatusMiliApp(raw);
+        //     } catch (e) {
+        //         console.log(`Erro ao atualizar status no MiliApp: ${e.message}`);
+        //     }
+        // }
 
         //  Envio de Status pelo WhatsApp
         let sales_channel = pedidoIntelipostObj.content[0].sales_channel;
 
-        if ((shipment_order_volume_state === 'IN_TRANSIT' ||
+        if ((shipment_order_volume_state === 'SHIPPED' ||
+            // shipment_order_volume_state === 'IN_TRANSIT' ||
             shipment_order_volume_state === 'TO_BE_DELIVERED' ||
             shipment_order_volume_state === 'DELIVERED') &&
             (sales_channel === 'Miligrama Farmácia de Manipulação')) {

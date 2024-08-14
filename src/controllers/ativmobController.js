@@ -1,6 +1,11 @@
-import tinyPesquisarPedido from '../services/tinyPesquisarPedido.js';
-import atualizarSituacaoPedido from '../services/atualizarSituacaoPedido.js';
-import updateStatusMiliAppv2 from '../services/updateStatusMiliAppv2.js'
+import updateStatusMiliAppv2 from '../services/updateStatusMiliAppv2.js';
+import getTemplate from '../services/getTemplate.js';
+import sendTrackingStatus from '../services/sendTrackingStatus.js';
+
+import obterTokenTiny from '../services/MiliApp/obterTokenTiny.js';
+import pesquisarPedidosV3 from '../services/Tiny_V3/pesquisarPedidosV3.js';
+import atualizarDespachoV3 from '../services/Tiny_V3/atualizarDespachoV3.js';
+import atualizarSituacaoPedidoV3 from '../services/Tiny_V3/atualizarSituacaoPedidoV3.js';
 
 class AtivmobController {
 
@@ -20,32 +25,70 @@ class AtivmobController {
 
         switch (event_desc) {
             case 'Entregue':
-                var situacao = 'entregue';
+                var nome_situacao = 'entregue';
+                var situacao = 6;
                 var shipment_order_volume_state = 'DELIVERED';
                 break;
             case 'Despachado':
-                var situacao = 'enviado';
+                var nome_situacao = 'enviado';
+                var situacao = 5;
                 var shipment_order_volume_state = 'TO_BE_DELIVERED'
                 break;
             default:
                 break;
         }
 
-        try {
-            let raw = {
-                numero: package_id,
-                situacao: situacao,
-                url_rastreamento: rastreio,
-            };
-            let response = await updateStatusMiliAppv2(raw);
-            console.log(response);
-        } catch(e) {
-            console.error(`Erro ao atualizar o pedido tiny: ${e.message}`);
-        }
+        // try {
+        //     let raw = {
+        //         numero: package_id,
+        //         situacao: nome_situacao,
+        //         url_rastreamento: rastreio,
+        //     };
+        //     let response = await updateStatusMiliAppv2(raw);
+        //     console.log(response);
+        // } catch(e) {
+        //     console.error(`Erro ao atualizar o pedido tiny: ${e.message}`);
+        // }
 
-        if (situacao === 'enviado' || situacao === 'entregue') {
+        if (nome_situacao === 'enviado' || nome_situacao === 'entregue') {
             try {
-                let phone = '5541992545324';
+                console.log('Tentando pela API V3')
+                let token_response = await obterTokenTiny();
+                token_response = JSON.parse(token_response);
+                let access_token = token_response[token_response.length - 1].access_token;
+
+                let url_params = `numero=${package_id}`;
+                var response_pesquisa = await pesquisarPedidosV3(access_token, url_params);
+                response_pesquisa = JSON.parse(response_pesquisa);
+                let tiny_id = response_pesquisa.itens[0].id;
+                
+                let despacho = {
+                    'codigoRastreamento': package_id,
+                    'urlRastreamento': rastreio
+                }
+
+                let response_despacho = await atualizarDespachoV3(access_token, tiny_id, despacho);
+                console.log(response_despacho);
+                let response_situacao = await atualizarSituacaoPedidoV3(access_token, tiny_id, situacao);
+                console.log(response_situacao);
+                console.log(`Id: ${tiny_id} - Atualizado pela API V3!`);
+            }
+            catch(e) {
+                console.error(`Erro ao atualizar o pedido pela API V3: ${e.message}`);
+
+                let raw = {
+                    numero: package_id,
+                    situacao: nome_situacao,
+                    url_rastreamento: rastreio,
+                };
+                let response = await updateStatusMiliAppv2(raw);
+                console.log(response);
+                console.log(`package_id: ${package_id} - Atualizado pela api V2`);
+            }
+            
+
+            try {
+                let phone = response_pesquisa.itens[0].cliente.telefone;
 
                 if (phone) {
                     phone = phone.replace(/[^a-zA-Z0-9]/g,"");

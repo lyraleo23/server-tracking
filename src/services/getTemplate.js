@@ -2,7 +2,8 @@ function getTemplate(messageObj) {
     let templateObj;
 
     switch (messageObj.shipment_order_volume_state) {
-        case 'IN_TRANSIT':
+        // case 'IN_TRANSIT':
+        case 'SHIPPED':
             templateObj = {
                 phone: messageObj.phone,
                 templateName: '_pedido_enviado_v3',
