@@ -38,18 +38,6 @@ class AtivmobController {
                 break;
         }
 
-        // try {
-        //     let raw = {
-        //         numero: package_id,
-        //         situacao: nome_situacao,
-        //         url_rastreamento: rastreio,
-        //     };
-        //     let response = await updateStatusMiliAppv2(raw);
-        //     console.log(response);
-        // } catch(e) {
-        //     console.error(`Erro ao atualizar o pedido tiny: ${e.message}`);
-        // }
-
         if (nome_situacao === 'enviado' || nome_situacao === 'entregue') {
             try {
                 console.log('Tentando pela API V3')
