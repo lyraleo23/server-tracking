@@ -44,14 +44,43 @@ class IntelipostController {
         let pedidoIntelipostObj = await consultarPedidoNotaFiscal(invoice_number);
         pedidoIntelipostObj = JSON.parse(pedidoIntelipostObj);
 
+        let sales_channel = pedidoIntelipostObj.content[0].sales_channel;
+        console.log(`sales_channel = ${sales_channel}`);
+
+        if (sales_channel === 'Miligrama Nordeste Farmácia de Manipulação') {
+            var origin = 'miligrama_nordeste';
+            var cnpj = '56982667000191';
+        }
+        else {
+            var origin = 'miligrama';
+            var cnpj = '07413904000198';
+        }
+        console.log(`origin = ${origin}`);
+
+        // Busca token tiny
         try {
-            console.log('tentando atualização pela API V3');
             let token_response = await obterTokenTiny();
             token_response = JSON.parse(token_response);
-            let access_token = token_response[token_response.length - 1].access_token;
-            let url_params
+            
+            for (let k = token_response.length - 1; k >= 0; k--) {
+                let token_origin = token_response[k].origin;
+                if (token_origin === origin) {
+                    var access_token = token_response[k].access_token;
+                }
+            }
+        }
+        catch(e) {
+            console.error(`Erro ao buscar token: ${e.message}`);
+        }
+
+        try {
+            // let token_response = await obterTokenTiny();
+            // token_response = JSON.parse(token_response);
+            // let access_token = token_response[token_response.length - 1].access_token;
+            let url_params;
 
             try {
+                // url_params = `numero_ecommerce=${sales_order_number}&cnpj=${cnpj}`;
                 url_params = `numero_ecommerce=${sales_order_number}`;
                 var response_pesquisa = await pesquisarPedidoPorFiltro(url_params);
                 response_pesquisa = JSON.parse(response_pesquisa);
@@ -60,6 +89,7 @@ class IntelipostController {
             catch(e) {
                 console.error(`Erro ao pesquisar pelo numero_ecommerce: ${e.message}`);
                 try {
+                    // url_params = `numero_nota_fiscal=${invoice_number}&cnpj=${cnpj}`;
                     url_params = `numero_nota_fiscal=${invoice_number}`;
                     var response_pesquisa = await pesquisarPedidoPorFiltro(url_params);
                     response_pesquisa = JSON.parse(response_pesquisa);
@@ -73,12 +103,12 @@ class IntelipostController {
 
             if (tiny_id) {
                 switch (shipment_order_volume_state) {
-                    case 'NEW':
-                        var situacao = 7;
-                        break;
-                    case 'CREATED':
-                        var situacao = 7;
-                        break;
+                    // case 'NEW':
+                    //     var situacao = 1;
+                    //     break;
+                    // case 'CREATED':
+                    //     var situacao = 7;
+                    //     break;
                     case 'SHIPPED':
                         var situacao = 7;
                         break;
@@ -102,63 +132,41 @@ class IntelipostController {
                 }
     
                 let response_despacho = await atualizarDespachoV3(access_token, tiny_id, despacho)
-                console.log(response_despacho);
+                console.log(`response_despacho = ${response_despacho}`);
                 if (situacao) {
                     let response_situacao = await atualizarSituacaoPedidoV3(access_token, tiny_id, situacao)
-                    console.log(response_situacao);
                 }
                 console.log(`Id: ${tiny_id} - Atualizado pela API V3!`);
             }
         }
         catch(e) {
             console.error(`Erro ao atualizar pela API V3: ${e.message}`);
-
-            if (shipment_order_volume_state !== 'CREATED') {
-                try {
-                    let raw = {
-                        numero_nota_fiscal: invoice_number,
-                        status_entrega: shipment_order_volume_state_localized,
-                        codigo_rastreamento: tracking_code,
-                        url_rastreamento: tracking_url,
-                        data_prevista: new Date(estimated_delivery_date),
-                        volume_number: volume_number,
-                        shipment_volume_micro_state: shipment_volume_micro_state,
-                        provider_message: provider_message
-                    };
-                    await updateStatusMiliApp(raw);
-                    console.log(`numero_nota_fiscal: ${numero_nota_fiscal} - Atualizado pela API V2!`);
-                } catch (e) {
-                    console.log(`Erro ao atualizar status no MiliApp: ${e.message}`);
-                }
-            }
         }
 
-        // if (shipment_order_volume_state !== 'CREATED') {
-        //     try {
-        //         let raw = {
-        //             numero_nota_fiscal: invoice_number,
-        //             status_entrega: shipment_order_volume_state_localized,
-        //             codigo_rastreamento: tracking_code,
-        //             url_rastreamento: tracking_url,
-        //             data_prevista: new Date(estimated_delivery_date),
-        //             volume_number: volume_number,
-        //             shipment_volume_micro_state: shipment_volume_micro_state,
-        //             provider_message: provider_message
-        //         };
-        //         await updateStatusMiliApp(raw);
-        //     } catch (e) {
-        //         console.log(`Erro ao atualizar status no MiliApp: ${e.message}`);
-        //     }
-        // }
+        // Atualiza despacho no miliapp
+        try {
+            let raw = {
+                'numero_nota_fiscal': invoice_number,
+                'status_entrega': shipment_order_volume_state_localized,
+                'codigo_rastreamento': tracking_code,
+                'url_rastreamento': tracking_url,
+                'data_prevista': new Date(estimated_delivery_date),
+                'volume_number': volume_number,
+                'shipment_volume_micro_state': shipment_volume_micro_state,
+                'provider_message': provider_message
+            };
+            await updateStatusMiliApp(raw);
+            console.log(`numero_nota_fiscal: ${invoice_number} - Atualizado MiliApp!`);
+        } catch (e) {
+            console.log(`Erro ao atualizar status no MiliApp: ${e.message}`);
+        }
 
         //  Envio de Status pelo WhatsApp
-        let sales_channel = pedidoIntelipostObj.content[0].sales_channel;
-
         if ((shipment_order_volume_state === 'SHIPPED' ||
             // shipment_order_volume_state === 'IN_TRANSIT' ||
             shipment_order_volume_state === 'TO_BE_DELIVERED' ||
             shipment_order_volume_state === 'DELIVERED') &&
-            (sales_channel === 'Miligrama Farmácia de Manipulação')) {
+            (sales_channel === 'Miligrama Farmácia de Manipulação' || sales_channel === 'Miligrama Nordeste Farmácia de Manipulação')) {
 
             try {
                 let phone;

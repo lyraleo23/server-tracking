@@ -1,7 +1,6 @@
-import updateStatusMiliAppv2 from '../services/updateStatusMiliAppv2.js';
+import updateStatusMiliAppV2 from '../services/MiliApp/updateStatusMiliAppV2.js';
 import getTemplate from '../services/getTemplate.js';
 import sendTrackingStatus from '../services/sendTrackingStatus.js';
-
 import obterTokenTiny from '../services/MiliApp/obterTokenTiny.js';
 import pesquisarPedidosV3 from '../services/Tiny_V3/pesquisarPedidosV3.js';
 import atualizarDespachoV3 from '../services/Tiny_V3/atualizarDespachoV3.js';
@@ -63,17 +62,20 @@ class AtivmobController {
             }
             catch(e) {
                 console.error(`Erro ao atualizar o pedido pela API V3: ${e.message}`);
-
-                let raw = {
-                    numero: package_id,
-                    situacao: nome_situacao,
-                    url_rastreamento: rastreio,
-                };
-                let response = await updateStatusMiliAppv2(raw);
-                console.log(response);
-                console.log(`package_id: ${package_id} - Atualizado pela api V2`);
             }
-            
+
+            // Atualiza despacho no miliapp
+            try {
+                let raw = {
+                    'numero': package_id,
+                    'situacao': nome_situacao,
+                    'url_rastreamento': rastreio,
+                };
+                await updateStatusMiliAppV2(raw);
+                console.log(`pedido: ${package_id} - Atualizado MiliApp!`);
+            } catch (e) {
+                console.log(`Erro ao atualizar status no MiliApp: ${e.message}`);
+            }
 
             try {
                 let phone = response_pesquisa.itens[0].cliente.telefone;
